@@ -4,7 +4,7 @@ import telebot
 import configparser
 
 config = configparser.ConfigParser()
-config.read_file(open(r'token.config'))
+config.read_file(open('./token.config', mode='r'))
 token = config.get('config', 'token')
 
 bot = telebot.TeleBot(token)
