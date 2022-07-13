@@ -14,10 +14,6 @@ bot = telebot.TeleBot(token)
 def send_welcome(message):
 	bot.reply_to(message, "Servus :-)")
 
-@bot.message_handler(func=lambda message: True)
-def echo_all(message):
-	bot.reply_to(message, message.text)
-
 @bot.message_handler(commands=['hilfe'])
 def send_welcome(message):
     bot.reply_to(message, "Nutze /erinnern und gib eine Anzahl von Minuten ein in der du erinnert werden möchtest.")
@@ -39,6 +35,11 @@ def set_timer(message):
 @bot.message_handler(commands=['stop'])
 def unset_timer(message):
     schedule.clear(message.chat.id)
+    
+
+bot.message_handler(func=lambda message: True)
+def echo_all(message):
+	bot.reply_to(message, message.text)
 
 
 if __name__ == '__main__':
