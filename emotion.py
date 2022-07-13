@@ -25,7 +25,7 @@ def beep(chat_id) -> None:
 @bot.message_handler(commands=['erinnern'])
 def set_timer(message):
     args = message.text.split()
-    if len(args) > 1 and args[1].isdigit():
+    if len(args) == 1 and args[1].isdigit():
         sec = int(args[1])
         schedule.every(sec).minutes.do(beep, message.chat.id).tag(message.chat.id)
     else:
@@ -35,7 +35,7 @@ def set_timer(message):
 @bot.message_handler(commands=['stop'])
 def unset_timer(message):
     schedule.clear(message.chat.id)
-    
+
 
 bot.message_handler(func=lambda message: True)
 def echo_all(message):
