@@ -30,15 +30,15 @@ def beep(chat_id) -> None:
     itembtnf = types.KeyboardButton('6')
     markup.row(itembtna, itembtnv, itembtnc)
     markup.row(itembtnd, itembtne, itembtnf)
-    tb.send_message(chat_id, "Vergib eine Note für deine Selbstfürsorge:", reply_markup=markup)
+    bot.send_message(chat_id, "Vergib eine Note für deine Selbstfürsorge:", reply_markup=markup)
 
 @bot.message_handler(commands=['erinnern'])
 def set_timer(message):
     args = message.text.split()
-    if len(args) == 1 and args[1].isdigit():
+    if len(args) > 1 and args[1].isdigit():
         sec = int(args[1])
         schedule.every(sec).minutes.do(beep, message.chat.id).tag(message.chat.id)
-        bot.reply_to(message, "Erinnerung gestellt auf ", sec, " Minuten :-)")
+        bot.send_message(message.chat.id, "Erinnerung gestellt!")
     else:
         bot.reply_to(message, 'Bitte im Format: /erinnern 5 (zum Beispiel)')
 
