@@ -21,7 +21,7 @@ def send_welcome(message):
 def beep(chat_id) -> None:
     """Send the beep message."""
     bot.send_message(chat_id, text='Wie geht es dir gerade?')
-    markup = types.ReplyKeyboardMarkup()
+    markup = types.ReplyKeyboardMarkup(one_time_keyboard = True)
     itembtna = types.KeyboardButton('1')
     itembtnv = types.KeyboardButton('2')
     itembtnc = types.KeyboardButton('3')
