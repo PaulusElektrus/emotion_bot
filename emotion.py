@@ -1,57 +1,166 @@
 #!/usr/bin/python3
 
+import time, threading, schedule, configparser
+
 import telebot
 from telebot import types
-import time, threading, schedule, configparser
 
 config = configparser.ConfigParser()
 config.read_file(open('./token.config', mode='r'))
 token = config.get('config', 'token')
 
-bot = telebot.TeleBot(token)
+knownUsers = []
+userStep = {}
 
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-	bot.reply_to(message, "Servus :-)")
+commands = {
+    'start': 'Begrüßung & Scan',
+    'hilfe': 'Informationen zur Bedienung',
+    'erinnern': 'Die Erinnerung starten',
+    'auswertung': 'Auswertung der Selbstfürsorge'
+}
 
-@bot.message_handler(commands=['hilfe'])
-def send_welcome(message):
-    bot.reply_to(message, "Nutze /erinnern und gib eine Anzahl von Minuten ein in der du erinnert werden möchtest.")
+number_board = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+itembtna = types.KeyboardButton('1')
+itembtnv = types.KeyboardButton('2')
+itembtnc = types.KeyboardButton('3')
+itembtnd = types.KeyboardButton('4')
+itembtne = types.KeyboardButton('5')
+itembtnf = types.KeyboardButton('6')
+number_board.row(itembtna, itembtnv, itembtnc)
+number_board.row(itembtnd, itembtne, itembtnf)
 
-def beep(chat_id) -> None:
-    """Send the beep message."""
-    bot.send_message(chat_id, text='Wie geht es dir gerade?')
-    markup = types.ReplyKeyboardMarkup(one_time_keyboard = True)
-    itembtna = types.KeyboardButton('1')
-    itembtnv = types.KeyboardButton('2')
-    itembtnc = types.KeyboardButton('3')
-    itembtnd = types.KeyboardButton('4')
-    itembtne = types.KeyboardButton('5')
-    itembtnf = types.KeyboardButton('6')
-    markup.row(itembtna, itembtnv, itembtnc)
-    markup.row(itembtnd, itembtne, itembtnf)
-    bot.send_message(chat_id, "Vergib eine Note für deine Selbstfürsorge:", reply_markup=markup)
+hideBoard = types.ReplyKeyboardRemove()
 
-@bot.message_handler(commands=['erinnern'])
-def set_timer(message):
-    args = message.text.split()
-    if len(args) > 1 and args[1].isdigit():
-        sec = int(args[1])
-        schedule.every(sec).minutes.do(beep, message.chat.id).tag(message.chat.id)
-        bot.send_message(message.chat.id, "Erinnerung gestellt!")
+
+def get_user_step(uid):
+    if uid in userStep:
+        return userStep[uid]
     else:
-        bot.reply_to(message, 'Bitte im Format: /erinnern 5 (zum Beispiel)')
+        knownUsers.append(uid)
+        userStep[uid] = 0
+        print("New user detected, who hasn't used \"/start\" yet.")
+        return 0
 
 
+def listener(messages):
+    for m in messages:
+        if m.content_type == 'text':
+            print(str(m.chat.first_name) + " [" + str(m.chat.id) + "]: " + m.text)
+
+
+def beep(cid):
+    bot.send_message(cid, "Vergib eine Note für deine Selbstfürsorge:", reply_markup=number_board)
+    userStep[cid] = 2
+
+
+bot = telebot.TeleBot(token)
+bot.set_update_listener(listener)
+
+
+# Start
+@bot.message_handler(commands=['start'])
+def command_start(m):
+    cid = m.chat.id
+    if cid not in knownUsers:
+        knownUsers.append(cid)  
+        userStep[cid] = 0
+        bot.send_message(cid, "Hallo Fremder, lass mich dich scannen...")
+        time.sleep(2)
+        bot.send_message(cid, "Scan abgeschlossen.")
+        command_help(m)
+    else:
+        bot.send_message(cid, "Du bist im System bereits registriert.")
+
+
+# Hilfe
+@bot.message_handler(commands=['hilfe'])
+def command_help(m):
+    cid = m.chat.id
+    help_text = "Die folgenden Optionen sind verfügbar: \n"
+    for key in commands:
+        help_text += "/" + key + ": "
+        help_text += commands[key] + "\n"
+    bot.send_message(cid, help_text)
+
+
+# Auswertung
+@bot.message_handler(commands=['auswertung'])
+def auswertung(m):
+    cid = m.chat.id
+    bot.send_message(cid, "Auswertung gestartet...")
+    bot.send_chat_action(cid, 'typing')
+    time.sleep(3)
+    bot.send_message(cid, "Hihi Feature noch nicht implementiert ;-)")
+
+
+# Erinnern lassen
+@bot.message_handler(commands=['erinnern'])
+def erinnern(m):
+    cid = m.chat.id
+    bot.send_message(cid, "In wie vielen Minuten soll ich dich erinnern?")
+    userStep[cid] = 1
+
+
+# Erinnerung einstellen
+@bot.message_handler(func=lambda message: get_user_step(message.chat.id) == 1)
+def set_timer(m):
+    cid = m.chat.id
+    text = m.text
+    args = text.split()
+
+    bot.send_chat_action(cid, 'typing')
+
+    if len(args) == 1 and args[0].isdigit():
+        sec = int(args[0])
+        schedule.every(sec).minutes.do(beep, cid).tag(cid)
+        bot.send_message(cid, "Erinnerung gestellt!")
+        userStep[cid] = 0
+    else:
+        bot.reply_to(m, 'Bitte nur die Anzahl der Minuten eingeben.')
+        bot.send_message(m, 'Bitte erneut versuchen.')
+
+
+# Selbstfürsorge Nummer
+@bot.message_handler(func=lambda message: get_user_step(message.chat.id) == 2)
+def sfn(m):
+    cid = m.chat.id
+    nummer = m.text
+    if nummer.isdigit():
+        bot.send_chat_action(cid, 'typing')
+        bot.send_message(cid, "Wie geht es die gerade?", reply_markup=hideBoard)
+        userStep[cid] = 3
+    else:
+        bot.send_message(cid, "Bitte vorgegebenes Keyboard benutzen!")
+        beep(cid)
+
+
+# Selbstfürsorge Text
+@bot.message_handler(func=lambda message: get_user_step(message.chat.id) == 3)
+def sft(m):
+    cid = m.chat.id
+    text = m.text
+    bot.send_chat_action(cid, 'typing')
+    bot.send_message(cid, "Pass auf dich auf!", reply_markup=hideBoard)
+    userStep[cid] = 0
+
+
+# Stop
 @bot.message_handler(commands=['stop'])
 def unset_timer(message):
     schedule.clear(message.chat.id)
     bot.reply_to(message, "Erinnerung deaktiviert!")
 
 
-bot.message_handler(func=lambda message: True)
-def echo_all(message):
-	bot.reply_to(message, message.text)
+# Easteregg
+@bot.message_handler(func=lambda message: message.text == "Easteregg")
+def easteregg(m):
+    bot.send_message(m.chat.id, "I love you!")
+
+
+# Standard Handler
+@bot.message_handler(func=lambda message: True, content_types=['text'])
+def command_default(m):
+    bot.send_message(m.chat.id, "Ich verstehe \"" + m.text + "\"nicht. Bitte /hilfe eingeben.")
 
 
 if __name__ == '__main__':
