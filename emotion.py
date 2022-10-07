@@ -5,6 +5,8 @@ import time, threading, schedule, configparser, data
 import telebot
 from telebot import types
 
+version = "2.0.1"
+
 config = configparser.ConfigParser()
 config.read_file(open('./token.config', mode='r'))
 token = config.get('config', 'token')
@@ -13,7 +15,9 @@ commands = {
     'start': 'Begrüßung & Scan',
     'hilfe': 'Informationen zur Bedienung',
     'erinnern': 'Die Erinnerung starten',
-    'auswertung': 'Auswertung der Selbstfürsorge'
+    'auswertung': 'Auswertung der Selbstfürsorge',
+    'stop': 'Aktuelle Aktion abbrechen bzw. die Erinnerung stoppen',
+    'version': 'Zeigt die aktuelle Version des Bots und die Neuerungen an'
 }
 
 number_board = types.ReplyKeyboardMarkup(one_time_keyboard=True)
@@ -38,6 +42,13 @@ def listener(messages):
 def beep(cid):
     bot.send_message(cid, "Vergib eine Note für deine Selbstfürsorge:", reply_markup=number_board)
     data.store_userStep(cid, 2)
+
+def first_start():
+    cids = data.get_all_users()
+    for x in cids:
+        cid = x[0]
+        name = x[1]
+        bot.send_message(cid, f"Hallo {name}, der Bot wurde neu gestartet - Version: {version} - weitere Infos unter /version")
 
 
 bot = telebot.TeleBot(token)
@@ -83,7 +94,7 @@ def auswertung(m):
     cid = m.chat.id
     bot.send_message(cid, "Auswertung gestartet...")
     bot.send_chat_action(cid, 'typing')
-    time.sleep(3)
+    time.sleep(1)
     bot.send_message(cid, "Hihi Feature noch nicht implementiert ;-)")
 
 
@@ -109,6 +120,11 @@ def set_timer(m):
         schedule.every(sec).minutes.do(beep, cid).tag(cid)
         bot.send_message(cid, "Erinnerung gestellt!")
         data.store_userStep(cid, 0)
+        return
+    if text == "/stop":
+        bot.send_message(cid, "Aktion abgebrochen!")
+        data.store_userStep(cid, 0)
+        return
     else:
         bot.reply_to(m, 'Bitte nur die Anzahl der Minuten eingeben.')
         bot.send_message(m, 'Bitte erneut versuchen.')
@@ -123,6 +139,10 @@ def sfn(m):
         bot.send_chat_action(cid, 'typing')
         bot.send_message(cid, "Wie geht es die gerade?", reply_markup=hideBoard)
         data.store_userStep(cid, 3)
+        return
+    if nummer == "/stop":
+        unset_timer(m)
+        return
     else:
         bot.send_message(cid, "Bitte vorgegebenes Keyboard benutzen!")
         beep(cid)
@@ -134,6 +154,7 @@ def sft(m):
     cid = m.chat.id
     text = m.text
     bot.send_chat_action(cid, 'typing')
+    time.sleep(1)
     bot.send_message(cid, "Danke! Pass weiterhin auf dich auf!", reply_markup=hideBoard)
     data.store_userStep(cid, 0)
 
@@ -142,23 +163,25 @@ def sft(m):
 @bot.message_handler(commands=['stop'])
 def unset_timer(message):
     schedule.clear(message.chat.id)
-    bot.reply_to(message, "Erinnerung deaktiviert!")
+    bot.send_message(message, "Erinnerung deaktiviert!")
 
 
-# Easteregg
-@bot.message_handler(func=lambda message: message.text == "Easteregg")
-def easteregg(m):
-    bot.send_message(m.chat.id, "I love you!")
+# Version
+@bot.message_handler(commands=['version'])
+def version_info(m):
+    cid = m.chat.id
+    bot.send_message(cid, f"Version: {version}\nAktuelle Neuerungen: \n- BUGFIX: /stop kann nun in jedem Zustand verwendet werden\n- Neue Versions- und Neustartinfo")
 
 
 # Standard Handler
 @bot.message_handler(func=lambda message: True, content_types=['text'])
 def command_default(m):
-    bot.send_message(m.chat.id, "Ich verstehe \"" + m.text + "\"nicht. Bitte /hilfe eingeben.")
+    bot.send_message(m.chat.id, "Ich verstehe \"" + m.text + "\"nicht. Bitte einmal /start ausführen und dann /hilfe eingeben.")
 
 
 if __name__ == '__main__':
     threading.Thread(target=bot.infinity_polling, name='bot_infinity_polling', daemon=True).start()
+    first_start()
     while True:
         schedule.run_pending()
         time.sleep(1)

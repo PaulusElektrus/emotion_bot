@@ -34,6 +34,13 @@ def get_user(cid):
         for x in data:
             return int(x[0])
 
+def get_all_users():
+    with DB:
+        cursor = DB.cursor()
+        data = cursor.execute("SELECT cid, first_name FROM USER")
+        data = data.fetchall()
+        return data
+
 def get_userstep(cid):
     with DB:
         cursor = DB.cursor()
