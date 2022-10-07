@@ -5,7 +5,7 @@ import time, threading, schedule, configparser, data
 import telebot
 from telebot import types
 
-version = "2.0.1"
+version = "2.0.2"
 
 config = configparser.ConfigParser()
 config.read_file(open('./token.config', mode='r'))
@@ -142,6 +142,7 @@ def sfn(m):
         return
     if nummer == "/stop":
         unset_timer(m)
+        data.store_userStep(cid, 0)
         return
     else:
         bot.send_message(cid, "Bitte vorgegebenes Keyboard benutzen!")
