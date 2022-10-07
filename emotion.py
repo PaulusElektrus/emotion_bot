@@ -5,7 +5,7 @@ import time, threading, schedule, configparser, data
 import telebot
 from telebot import types
 
-version = "2.0.2"
+version = "2.0.3"
 
 config = configparser.ConfigParser()
 config.read_file(open('./token.config', mode='r'))
@@ -141,8 +141,8 @@ def sfn(m):
         data.store_userStep(cid, 3)
         return
     if nummer == "/stop":
-        unset_timer(m)
         data.store_userStep(cid, 0)
+        unset_timer(m)
         return
     else:
         bot.send_message(cid, "Bitte vorgegebenes Keyboard benutzen!")
@@ -164,7 +164,7 @@ def sft(m):
 @bot.message_handler(commands=['stop'])
 def unset_timer(message):
     schedule.clear(message.chat.id)
-    bot.send_message(message, "Erinnerung deaktiviert!")
+    bot.send_message(message.chat.id, "Erinnerung deaktiviert!")
 
 
 # Version
